@@ -1,0 +1,3 @@
+class Protocol::TLS::Crypto {
+  
+}
