@@ -11,3 +11,4 @@ use Protocol::TLS::Connection;
 use Protocol::TLS::Context;
 use Protocol::TLS::Crypto;
 use Protocol::TLS::Extension;
+use Protocol::TLS::RecordLayer;
