@@ -5,35 +5,35 @@ use Protocol::TLS::Crypto;
 use Protocol::TLS::Constants;
 
 my %sp = 
-  connectionEnd       => undef,      # CLIENT, SERVER
-  PRFAlgorithm        => undef,      # tls_prf_sha256
-  BulkCipherAlgorithm => undef,      # null, rc4, 3des, aes
-  CipherType          => undef,      # stream, block, aead
-  enc_key_length      => undef,
-  block_length        => undef,
-  fixed_iv_length     => undef,
-  record_iv_length    => undef,
-  MACAlgorithm        => undef,      # sha1, sha256
-  mac_length          => undef,
-  mac_key_length      => undef,
-  CompressionMethod   => undef,      # null
+  connectionEnd       => Mu,      # CLIENT, SERVER
+  PRFAlgorithm        => Mu,      # tls_prf_sha256
+  BulkCipherAlgorithm => Mu,      # null, rc4, 3des, aes
+  CipherType          => Mu,      # stream, block, aead
+  enc_key_length      => Mu,
+  block_length        => Mu,
+  fixed_iv_length     => Mu,
+  record_iv_length    => Mu,
+  MACAlgorithm        => Mu,      # sha1, sha256
+  mac_length          => Mu,
+  mac_key_length      => Mu,
+  CompressionMethod   => Mu,      # null
   master_secret       => ' ' x 48,
   client_random       => ' ' x 32,
   server_random       => ' ' x 32,
 ;
 
 my %kb =
-  client_write_MAC_key        => undef,
-  server_write_MAC_key        => undef,
-  client_write_encryption_key => undef,
-  server_write_encryption_key => undef,
-  client_write_IV             => undef,
-  server_write_IV             => undef,
+  client_write_MAC_key        => Mu,
+  server_write_MAC_key        => Mu,
+  client_write_encryption_key => Mu,
+  server_write_encryption_key => Mu,
+  client_write_IV             => Mu,
+  server_write_IV             => Mu,
 ;
 
 class Protocol::TLS::Context {
   has $.type;
-  has Protocol::TLS::Crypto $crypto .= new;
+  has Protocol::TLS::Crypto $crypto = Protocol::TLS::Crypto.new;
   has $.proposed;
   has $.pending;
   has $.current-decode;
@@ -62,13 +62,13 @@ class Protocol::TLS::Context {
   }
   method clear-pending {
     $.pending = %(
-      securityParameters = {%sp},
-      key-block          = {%kb},
-      tls-version        = Nil,
-      session-id         = Nil,
-      cipher             = Nil,
-      hs-messages        = Array.new,
-      compression        = Nil,
+      securityParameters => {%sp},
+      key-block          => {%kb},
+      tls-version        => Nil,
+      session-id         => Nil,
+      cipher             => Nil,
+      hs-messages        => Array.new,
+      compression        => Nil,
     );
     $.pending<securityParameters><connectionEnd> = $.type;
   }
@@ -76,7 +76,7 @@ class Protocol::TLS::Context {
     $.clear-pending; 
     $.load-extensions('ServerName');
     $.pending<securityParameters>{$.type == SERVER ??
-      'server_random' !! 'client_random' } = pack('N', time) . $.crypto.random(28); 
+      'server_random' !! 'client_random' } = pack('N', time) ~ $.crypto.random(28); 
   }
   method error(*@args) {
     $.tracer.debug("called error: {@args.perl}\n");
@@ -150,7 +150,7 @@ class Protocol::TLS::Context {
         $.state(STATE_OPEN);
       } elsif $c-type == CTYPE_CHANGE_CIPHER_SPEC {
         $.change-cipher-spec($action);
-      } else{
+      } else {
         $.tracer.error("Unexpected handshake type\n");
         $.error(UNEXPECTED_MESSAGE);
       }
@@ -161,12 +161,12 @@ class Protocol::TLS::Context {
         }
       } else {
         $.tracer.error("Unexpected handshake type\n");
-        $.error(UNEXPECTED_HANDSHAKE);
+        $.error(UNEXPECTED_MESSAGE);
       }
     } elsif $prev-state == STATE_HS_HALF {
       if $c-type == CTYPE_HANDSHAKE {
           if $hs-type == HSTYPE_FINISHED {
-            $.state(STAT_HS_FULL);
+            $.state(STATE_HS_FULL);
           } 
       } elsif $c-type == CTYPE_CHANGE_CIPHER_SPEC {
         $.change-cipher-spec($action);
@@ -185,7 +185,7 @@ class Protocol::TLS::Context {
         $.tracer.error("Unexpected handshake type\n");
         $.error(UNEXPECTED_MESSAGE);
       }
-    } elsif $p-state == STATE_OPEN {
+    } elsif $prev-state == STATE_OPEN {
       $.tracer.warning("ReNegotiation not supported yet\n");
     }
   }
@@ -279,10 +279,10 @@ class Protocol::TLS::Context {
       return Nil;
     }
     $p<tls_version>                           = $tls_v;
-    $p<securityParameters><server_random>     = $h<random>;
-    $p<session_id>                            = $h<session_id>;
-    $p<securityParameters><CompressionMethod> = $p<compression> = $h<compression>;
-    $p<cipher>                                = $h<cipher>;
+    $p<securityParameters><server_random>     = %h<random>;
+    $p<session_id>                            = %h<session_id>;
+    $p<securityParameters><CompressionMethod> = $p<compression> = %h<compression>;
+    $p<cipher>                                = %h<cipher>;
   }
 
   method validate-client-hello(*%h) {
@@ -299,7 +299,7 @@ class Protocol::TLS::Context {
       $.error(PROTOCOL_VERSION);
       return Nil;
     }
-    for @($pro<compression>) -> $c {
+    for @($r<compression>) -> $c {
       next unless @(%h<compression>).grep({ $c == * });
       $p<securityParameters><CompressionMethod> = $c;
       last;
@@ -322,11 +322,11 @@ class Protocol::TLS::Context {
   }
 
   method peer-finished {
-    $!finished( $.type == CLIENT ?? SERVER !! CLIENT );
+    self!finished( $.type == CLIENT ?? SERVER !! CLIENT );
   }
 
   method finished {
-    $!finished( $.type == CLIENT ?? CLIENT !! SERVER );
+    self!finished( $.type == CLIENT ?? CLIENT !! SERVER );
   }
 
   method !finished($type) {

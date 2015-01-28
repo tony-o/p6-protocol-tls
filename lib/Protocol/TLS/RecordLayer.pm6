@@ -15,19 +15,19 @@ my %content-types =
 ;
 
 my %decoder =
-  %content-types.keys.map {
+  %content-types.keys.map({
     $_ => "Protocol::TLS::{%content-types{$_}}::decode"
-  }
+  })
 ;
 
 my %encoder =
-  %content-types.keys.map {
+  %content-types.keys.map({
     $_ => "Protocol::TLS::{%content-types{$_}}::encode"
-  }
+  })
 ;
 
 class Protocol::TLS::RecordLayer {
-  has Protocol::TLS::Trace $.tracer .= new;
+  has Protocol::TLS::Trace $.tracer = &Protocol::TLS::Trace::instance;
   method new {!!!};
   method record-decode($ctx, Buf $buf, Int $offset) {
     return 0 if $buf.elems - $offset < 5;
@@ -39,7 +39,7 @@ class Protocol::TLS::RecordLayer {
       return Mu;
     }
 
-    if ! $content-types.exists_key($type) {
+    if ! %content-types.exists_key($type) {
       $.tracer.debug("Unknown content type: $type\n");
       $ctx.error;
       return Mu;
@@ -53,7 +53,7 @@ class Protocol::TLS::RecordLayer {
 
     my $decompressed = Protocol::TLS::Compression::decode($ctx, $decrypted, 0, $decrypted.elems);
 
-    return Mu unless defined $decoder{$type}.($ctx, $decompressed, 0, $decompressed.elems);
+    return Mu unless defined %decoder{$type}.($ctx, $decompressed, 0, $decompressed.elems);
 
     return 5 + $offset;
   }

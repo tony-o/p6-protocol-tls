@@ -1,7 +1,7 @@
-use Protocol::TLS::Tracer;
+use Protocol::TLS::Trace;
 
 class Protocol::TLS::Extension {
-  has Protocol::TLS::Tracer $.tracer .= instance;
+  has Protocol::TLS::Trace $.tracer = &Protocol::TLS::Trace::instance;
 
   method ext_decode($ctx, $result, Buf $buf, Int $offset, Int $len) {
     if $len < 2 {
